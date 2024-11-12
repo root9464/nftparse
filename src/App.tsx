@@ -1,13 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { TonConnectButton, useTonAddress } from '@tonconnect/ui-react';
+import { useQuery } from '@tanstack/react-query';
+import { TonConnectButton } from '@tonconnect/ui-react';
 import axios from 'axios';
-import { useState } from 'react';
 import './App.css';
 
 type NFTItem = {
-  address: string;
+  address: string; // адрес NFT
   index: number;
-  owner: Owner;
+  owner: Owner; // адрес владельца
   collection: Collection;
   verified: boolean;
   metadata: Metadata;
@@ -23,8 +23,8 @@ type Owner = {
 };
 
 type Collection = {
-  address: string;
-  name: string;
+  address: string; // адрес коллекции
+  name: string; // название коллекции
   description: string;
 };
 
@@ -54,36 +54,65 @@ const axiosInstance = axios.create({
   baseURL: 'https://tonapi.io/v2',
 });
 
-function App() {
+export default function App() {
   //'UQByKjIwjkKksvJGAGTI5cJqR74FGLjTUpo99Q1exkr16Ajj';
-  const address = useTonAddress();
   const addressCollection = 'EQD-nUBThaesec5tw3UP2w9lwAyHhGuuHkI2Ecntr_OCTIES';
-  const [nftsUser, setNftsUser] = useState<NFTItem[]>([]);
+  const address = 'UQByKjIwjkKksvJGAGTI5cJqR74FGLjTUpo99Q1exkr16Ajj';
 
-  const checkNftsOnAccount = () => {
-    if (address) {
-      axiosInstance
-        .get<NFTResponse>(`/accounts/${address}/nfts?collection=${addressCollection}&offset=0&indirect_ownership=false`)
-        .then((response) => {
-          setNftsUser(response.data.nft_items);
-        });
-    }
-  };
+  function checkNftsOnAccount() {
+    console.log('запрос на актуальность ушел');
+
+    return axiosInstance.get<NFTResponse>(`/accounts/${address}/nfts?collection=${addressCollection}&offset=0&indirect_ownership=false`);
+  }
+
+  const { data } = useQuery({
+    queryKey: ['data_nft'],
+    queryFn: checkNftsOnAccount,
+    enabled: !!address,
+    refetchInterval: 1000 * 10,
+    select: ({ data }) => data.nft_items,
+  });
+
+  //*****  Статический способ
+  // const [nftsUser, setNftsUser] = useState<NFTItem[]>([]);
+
+  // const checkNftsOnAccount = () => {
+  //   if (address) {
+  //     axiosInstance
+  //       .get<NFTResponse>(`/accounts/${address}/nfts?collection=${addressCollection}&offset=0&indirect_ownership=false`)
+  //       .then((response) => {
+  //         setNftsUser(response.data.nft_items);
+  //         console.log(response.data.nft_items);
+  //       });
+  //   }
+  // };
 
   return (
     <div className='App'>
       <TonConnectButton />
-      <div className='images'>
+
+      {/******  Статический способ */}
+      {/* <div className='images'>
         {' '}
         {nftsUser.length > 0 ? (
           nftsUser.map((nft) => <img src={nft.metadata.image} alt='nft' key={nft.index} />)
         ) : (
           <p>no nfts or not connect wallet</p>
         )}
+      </div> 
+      <button onClick={checkNftsOnAccount}>сканировать</button> */}
+
+      <div className='images'>
+        {data !== undefined ? (
+          <>
+            {data.map((nft) => (
+              <img src={nft.metadata.image} alt='nft' key={nft.index} />
+            ))}
+          </>
+        ) : (
+          <p>no nfts or not connect wallet</p>
+        )}
       </div>
-      <button onClick={checkNftsOnAccount}>сканировать</button>
     </div>
   );
 }
-
-export default App;

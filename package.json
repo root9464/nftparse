@@ -8,6 +8,8 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.59.20",
+    "@tanstack/react-query-devtools": "^5.59.20",
     "@tonconnect/ui-react": "^2.0.9",
     "axios": "^1.7.7",
     "buffer": "^6.0.3",
