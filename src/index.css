@@ -83,4 +83,9 @@ button:focus-visible {
   width: 100%;
   justify-content: space-around;
   height: max-content;
+
+  &>img {
+    width: 400px;
+    height: 400px;
+  }
 }

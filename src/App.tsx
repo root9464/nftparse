@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useQuery } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 import { TonConnectButton } from '@tonconnect/ui-react';
 import axios from 'axios';
 import './App.css';
@@ -54,8 +54,26 @@ const axiosInstance = axios.create({
   baseURL: 'https://tonapi.io/v2',
 });
 
+type Bounceable = {
+  b64: string;
+  b64url: string;
+};
+
+type NonBounceable = {
+  b64: string;
+  b64url: string;
+};
+
+type ParsedAdressHex = {
+  raw_form: string;
+  bounceable: Bounceable;
+  non_bounceable: NonBounceable;
+  given_type: string;
+  test_only: boolean;
+};
+
 export default function App() {
-  //'UQByKjIwjkKksvJGAGTI5cJqR74FGLjTUpo99Q1exkr16Ajj';
+  //'UQByKjIwjkKksvJGAGTI5cJqR74FGLjTUpo99Q1exkr16Ajj'; адресс у кого есть NFT
   const addressCollection = 'EQD-nUBThaesec5tw3UP2w9lwAyHhGuuHkI2Ecntr_OCTIES';
   const address = 'UQByKjIwjkKksvJGAGTI5cJqR74FGLjTUpo99Q1exkr16Ajj';
 
@@ -72,6 +90,19 @@ export default function App() {
     refetchInterval: 1000 * 10,
     select: ({ data }) => data.nft_items,
   });
+
+  const addressQueries = useQueries({
+    queries:
+      data?.map((nft) => ({
+        queryKey: ['parse_address', nft.address],
+        queryFn: () => axiosInstance.get<ParsedAdressHex>(`/address/${nft.address}/parse`),
+        enabled: !!nft.address,
+      })) || [],
+  });
+
+  //**** получить дату из кеша (доступно на любом уровне dom дерева)
+  // const data2 = useQueryClient();
+  // console.log(data2.getQueryData(['data_nft']), 'ffffff');
 
   //*****  Статический способ
   // const [nftsUser, setNftsUser] = useState<NFTItem[]>([]);
@@ -102,15 +133,23 @@ export default function App() {
       </div> 
       <button onClick={checkNftsOnAccount}>сканировать</button> */}
 
+      {/*****  Динамический способ */}
       <div className='images'>
-        {data !== undefined ? (
-          <>
-            {data.map((nft) => (
-              <img src={nft.metadata.image} alt='nft' key={nft.index} />
-            ))}
-          </>
+        {data?.length ? (
+          data.map((nft, index) => (
+            <div key={nft.index}>
+              <img src={nft.metadata.image} alt='nft' />
+              <p>{nft.collection.name}</p>
+              {addressQueries[index]?.data && (
+                <div>
+                  <p>Parsed Address:</p>
+                  <p>{addressQueries[index].data.data.bounceable.b64url}</p>
+                </div>
+              )}
+            </div>
+          ))
         ) : (
-          <p>no nfts or not connect wallet</p>
+          <p>{data ? 'no nfts' : 'no nfts or not connected wallet'}</p>
         )}
       </div>
     </div>
