@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useQueries, useQuery } from '@tanstack/react-query';
-import { TonConnectButton } from '@tonconnect/ui-react';
+import { TonConnectButton, useTonAddress } from '@tonconnect/ui-react';
 import axios from 'axios';
+import { FC } from 'react';
 import './App.css';
 
 type NFTItem = {
@@ -75,7 +76,7 @@ type ParsedAdressHex = {
 export default function App() {
   //'UQByKjIwjkKksvJGAGTI5cJqR74FGLjTUpo99Q1exkr16Ajj'; адресс у кого есть NFT
   const addressCollection = 'EQD-nUBThaesec5tw3UP2w9lwAyHhGuuHkI2Ecntr_OCTIES';
-  const address = 'UQByKjIwjkKksvJGAGTI5cJqR74FGLjTUpo99Q1exkr16Ajj';
+  const address = useTonAddress();
 
   function checkNftsOnAccount() {
     console.log('запрос на актуальность ушел');
@@ -91,15 +92,19 @@ export default function App() {
     select: ({ data }) => data.nft_items,
   });
 
+  async function fetchParsedAddress(address: string) {
+    const { data } = await axiosInstance.get<ParsedAdressHex>(`/address/${address}/parse`);
+    return data;
+  }
+
   const addressQueries = useQueries({
     queries:
       data?.map((nft) => ({
         queryKey: ['parse_address', nft.address],
-        queryFn: () => axiosInstance.get<ParsedAdressHex>(`/address/${nft.address}/parse`),
+        queryFn: () => fetchParsedAddress(nft.address),
         enabled: !!nft.address,
       })) || [],
   });
-
   //**** получить дату из кеша (доступно на любом уровне dom дерева)
   // const data2 = useQueryClient();
   // console.log(data2.getQueryData(['data_nft']), 'ffffff');
@@ -136,18 +141,7 @@ export default function App() {
       {/*****  Динамический способ */}
       <div className='images'>
         {data?.length ? (
-          data.map((nft, index) => (
-            <div key={nft.index}>
-              <img src={nft.metadata.image} alt='nft' />
-              <p>{nft.collection.name}</p>
-              {addressQueries[index]?.data && (
-                <div>
-                  <p>Parsed Address:</p>
-                  <p>{addressQueries[index].data.data.bounceable.b64url}</p>
-                </div>
-              )}
-            </div>
-          ))
+          data.map((nft, index) => <NFTDisplay key={nft.index} nft={nft} parsedAddress={addressQueries[index]?.data} />)
         ) : (
           <p>{data ? 'no nfts' : 'no nfts or not connected wallet'}</p>
         )}
@@ -155,3 +149,23 @@ export default function App() {
     </div>
   );
 }
+
+type NFTDisplayProps = {
+  nft: NFTItem;
+  parsedAddress: ParsedAdressHex | undefined;
+};
+
+const NFTDisplay: FC<NFTDisplayProps> = ({ nft, parsedAddress }) => {
+  return (
+    <div className='nft-item' key={nft.index}>
+      <img src={nft.metadata.image} alt={nft.metadata.name} className='nft-image' />
+      <h3 className='nft-collection-name'>{nft.collection.name}</h3>
+      {parsedAddress && (
+        <div className='parsed-address'>
+          <p>Parsed Address:</p>
+          <p>{parsedAddress.bounceable.b64url}</p>
+        </div>
+      )}
+    </div>
+  );
+};
